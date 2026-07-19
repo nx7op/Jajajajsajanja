@@ -1,0 +1,17 @@
+# Nova AI Bot - Python Dependencies
+# ===================================
+
+# Telegram Bot Framework
+python-telegram-bot[job-queue]>=21.0
+
+# HTTP Client (for OpenRouter API)
+aiohttp>=3.9.0
+
+# Async utilities
+asyncio-throttle>=1.0.2
+
+# Environment & Config
+python-dotenv>=1.0.0
+
+# Type hints (Python 3.10+)
+typing-extensions>=4.8.0
