@@ -1,8 +1,8 @@
 # Nova AI Bot - Python Dependencies
 # ===================================
 
-# Telegram Bot Framework
-python-telegram-bot[job-queue]>=21.0
+# Telegram Bot Framework (v20+ has ChatAction in constants)
+python-telegram-bot>=20.7,<22.0
 
 # HTTP Client (for OpenRouter API)
 aiohttp>=3.9.0

@@ -31,12 +31,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from telegram import (
     Update,
     BotCommand,
-    ChatAction,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
 )
+from telegram.constants import ChatAction
 from telegram.ext import (
     Application,
     CommandHandler,
