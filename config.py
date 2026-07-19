@@ -1,16 +1,16 @@
 """
-🤖 NOVA AI BOT v2.2 - Configuration
+🤖 NOVA AI BOT v2.3 - Configuration
 ====================================
 
-✅ MODELS:
-   - Default: Nemotron Ultra 550B (BEST)
-   - 8 Special Models (User Selected)
-   - Coding Agent Mode (/agent)
+✅ MODEL:
+   - openrouter/auto-beta (MULTIMODAL!)
+   - Text + Image Generation in ONE model!
 
 ✅ FEATURES:
    - Font Changer, Shayari, Quotes
-   - Model Selection (/models)
-   - 🆕 CODE AGENT (/agent) - For Programming!
+   - 🆕 IMAGE GENERATION (/image, /generate)
+   - 🎨 AI Art Creator
+   - Code Agent Mode (/agent)
 """
 
 import os
@@ -28,101 +28,41 @@ BOT_TOKEN: str = os.environ.get("BOT_TOKEN", "")
 # ============================================================
 
 OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL: str = os.environ.get("AI_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+OPENROUTER_MODEL: str = "openrouter/auto-beta"  # MULTIMODAL MODEL!
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
 # ============================================================
-# 🧠 MODELS CONFIGURATION (v2.2 - User Curated!)
+# 🧠 THE ONLY MODEL - MULTIMODAL AUTO-BETA!
 # ============================================================
 
-# DEFAULT MODEL - The BEST One!
-DEFAULT_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+# PRIMARY MODEL - Does EVERYTHING!
+PRIMARY_MODEL: str = "openrouter/auto-beta"
 
-# ALL AVAILABLE MODELS (9 Total - User Selected!)
+# Model info for display
+MODEL_INFO: dict = {
+    "id": "openrouter/auto-beta",
+    "name": "🚀 Auto Beta (Multimodal)",
+    "provider": "OpenRouter",
+    "desc": "🎨 TEXT + IMAGE GENERATION - All in one!",
+    "capabilities": ["text", "image", "code", "reasoning"],
+    "is_multimodal": True
+}
+
+# For backward compatibility (single item dict)
 FREE_TEXT_MODELS: dict = {
-    # 🔥 DEFAULT - BEST MODEL
-    "nvidia/nemotron-3-ultra-550b-a55b:free": {
-        "name": "⭐ Nemotron Ultra 550B",
-        "provider": "NVIDIA",
-        "desc": "🔥 DEFAULT - Best quality, human-like responses",
-        "category": "default",
-        "is_default": True
-    },
-    
-    # 💻 CODE AGENT MODELS (Best for Programming!)
-    "cohere/north-mini-code:free": {
-        "name": "🤖 North Mini Code",
-        "provider": "Cohere",
-        "desc": "💻 SPECIALIZED for CODE - Debug, write, explain",
-        "category": "code",
-        "is_code_model": True
-    },
-    
-    # ⚡ NVIDIA SPECIAL MODELS
-    "nvidia/nemotron-3-super-120b-a12b:free": {
-        "name": "Nemotron Super 120B",
-        "provider": "NVIDIA",
-        "desc": "⚡ Fast & Smart - Great balance",
-        "category": "fast"
-    },
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
-        "name": "🧠 Nano Omni Reasoning",
-        "provider": "NVIDIA",
-        "desc": "🧠 REASONING specialist - Logic & math",
-        "category": "reasoning"
-    },
-    "nvidia/nemotron-3.5-content-safety:free": {
-        "name": "🛡️ Content Safety",
-        "provider": "NVIDIA",
-        "desc": "🛡️ Safe & filtered responses",
-        "category": "special"
-    },
-    
-    # 🏊 POOLSIDE MODELS
-    "poolside/laguna-m.1:free": {
-        "name": "Laguna M.1",
-        "provider": "Poolside",
-        "desc": "🏊 New AI model - Try it!",
-        "category": "experimental"
-    },
-    "poolside/laguna-xs-2.1:free": {
-        "name": "💨 Laguna XS 2.1",
-        "provider": "Poolside",
-        "desc": "💨 Ultra fast - Instant replies",
-        "category": "ultra_fast"
-    },
-    
-    # 🦙 META LLAMA
-    "meta-llama/llama-3.3-70b-instruct:free": {
-        "name": "Llama 3.3 70B",
-        "provider": "Meta",
-        "desc": "🦙 Meta's best open model",
-        "category": "balanced"
-    },
-    
-    # 🇨🇳 TENCENT
-    "tencent/hy3:free": {
-        "name": "HY3",
-        "provider": "Tencent",
-        "desc": "🇨🇳 Tencent's powerful model",
-        "category": "experimental"
+    "openrouter/auto-beta": {
+        "name": "🚀 Auto Beta (Multimodal)",
+        "provider": "OpenRouter",
+        "desc": "🎨 TEXT + IMAGE GENERATION!",
+        "category": "multimodal",
+        "is_default": True,
+        "is_multimodal": True
     },
 }
 
-# EMBEDDING MODEL (For special features)
-EMBEDDING_MODEL: str = "nvidia/nemotron-3-embed-1b:free"
-
-# CODE AGENT MODELS (Auto-used in /agent mode)
-CODE_AGENT_MODELS: list = [
-    "cohere/north-mini-code:free",           # PRIMARY code model
-    "nvidia/nemotron-3-ultra-550b-a55b:free", # Fallback
-]
-
-# Fallback models list (for auto-failover)
+# Fallback (same model)
 FALLBACK_MODELS: List[str] = [
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "poolside/laguna-m.1:free",
+    "openrouter/auto-beta",
 ]
 
 # User-selected model storage (user_id -> model_id)
@@ -130,6 +70,26 @@ USER_MODEL_PREFERENCES: dict = {}
 
 # User's agent mode status (user_id -> bool)
 USER_AGENT_MODE: dict = {}
+
+# ============================================================
+# 🎨 IMAGE GENERATION CONFIG
+# ============================================================
+
+IMAGE_GENERATION_ENABLED: bool = True
+IMAGE_MODEL: str = "openrouter/auto-beta"
+IMAGE_SIZE: str = "1024x1024"  # Default size
+IMAGE_STYLES: list = [
+    "realistic",
+    "anime", 
+    "digital-art",
+    "oil-painting",
+    "watercolor",
+    "cartoon",
+    "3d-render",
+    "pixel-art",
+    "sketch",
+    "cinematic",
+]
 
 # ============================================================
 # 🤖 CODE AGENT SYSTEM PROMPT
@@ -185,6 +145,7 @@ Your personality:
 
 Special Skills:
 💻 Coding help (Python, JS, Java, etc.)
+🎨 Image generation (use /image command!)
 📝 Creative writing (Shayari, poems, stories in Hinglish!)
 🔍 Answer any question
 🌐 Translate anything
@@ -199,6 +160,11 @@ SHAYARI RULES (when asked for shayari/poetry):
 - Example style:
   "raat bhar jaagna aadat hai, tumse milna nahi"
   "chaand bhi gawaah hai, maine kitna roya tum bin"
+
+IMAGE GENERATION RULES:
+- When user asks for images/art/pictures/drawings, tell them to use /image command
+- You can describe what image would look like, but actual generation uses /image
+- Be creative with image descriptions!
 
 Response Rules:
 - Keep it SHORT and impactful
@@ -235,7 +201,7 @@ RATE_LIMIT_HOUR: int = 50
 # ============================================================
 
 ENABLE_VOICE: bool = True  # Voice message support
-ENABLE_IMAGE: bool = False  # Image generation (needs DALL-E key)
+ENABLE_IMAGE: bool = True  # 🆕 Image generation ENABLED!
 ENABLE_CODE_EXECUTION: bool = False  # Sandbox code execution
 STREAM_RESPONSES: bool = True  # Stream responses for live preview
 
@@ -282,7 +248,7 @@ def validate_config() -> tuple[bool, list[str]]:
 def get_env_info() -> dict:
     """Get environment info for display."""
     return {
-        "model": OPENROUTER_MODEL.split("/")[-1] if "/" in OPENROUTER_MODEL else OPENROUTER_MODEL,
+        "model": "Auto-Beta (Multimodal)",
         "max_tokens": MAX_TOKENS,
         "temperature": TEMPERATURE,
         "memory": f"{MAX_HISTORY_PER_USER} msgs/user",
@@ -292,6 +258,8 @@ def get_env_info() -> dict:
             "voice": "✅" if ENABLE_VOICE else "❌",
             "memory": "✅ Context Memory",
             "agent": "✅ Code Agent Mode",
+            "image": "🎨 Image Generation!",
+            "multimodal": "🚀 Text + Images",
         }
     }
 
@@ -300,11 +268,10 @@ def get_env_info() -> dict:
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 print("\n" + "="*60)
-print("🤖 NOVA AI BOT v2.2 - Configuration Loaded")
+print("🤖 NOVA AI BOT v2.3 - Configuration Loaded")
 print("="*60)
-print(f"   Default Model: {DEFAULT_MODEL}")
-print(f"   Total Models: {len(FREE_TEXT_MODELS)}")
-print(f"   Code Agent: ✅ Enabled")
+print(f"   Model: {PRIMARY_MODEL} (MULTIMODAL!)")
+print(f"   Capabilities: TEXT + IMAGE GENERATION ✨")
 print(f"   Max Tokens: {MAX_TOKENS}")
 print(f"   Memory: {MAX_HISTORY_PER_USER} messages/user")
 print("="*60 + "\n")

@@ -1,12 +1,10 @@
 """
-🚀 NOVA AI BOT - ULTRA ADVANCED v2.2
+🚀 NOVA AI BOT - ULTRA ADVANCED v2.3
 =======================================
 
 ✅ FIXED BUGS:
-   - 'Message' object has no attribute 'message'
-   - Inline query timeout issues  
-   - Markdown entity parsing errors
-   - /models NameError bug fixed!
+   - All previous bugs fixed
+   - Multimodal support added
 
 ✅ FEATURES:
    - 🎨 Font Changer (15+ Fancy Fonts)
@@ -14,12 +12,13 @@
    - 💬 Quotes Generator
    - ⚡ Ultra Fast Inline Mode
    - 🤖 Human-like Responses
-   - 🧠 MODEL SELECTOR (/models) - 9 Free Models!
-   - 🆕 CODE AGENT MODE (/agent) - Programming Assistant!
-   - 🔥 User Curated Model List (v2.2)
+   - 🆕 IMAGE GENERATION (/image, /generate) - AI Art!
+   - 🎨 MULTIMODAL MODEL (Text + Images in ONE!)
+   - 💻 Code Agent Mode (/agent)
 
 Author: Nova AI Team
-Version: 2.2.0
+Version: 2.3.0
+Model: openrouter/auto-beta (MULTIMODAL)
 """
 
 import os
@@ -29,6 +28,8 @@ import time
 import threading
 import random
 import json
+import base64
+import requests  # 🆕 For image generation!
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -45,6 +46,7 @@ from telegram import (
     ReplyKeyboardRemove,
     InlineQueryResultArticle,
     InputTextMessageContent,
+    InputMediaPhoto,  # 🆕 For image editing
 )
 from telegram.ext import (
     Application,
@@ -85,10 +87,13 @@ from config import (
     RATE_LIMIT_HOUR,
     FREE_TEXT_MODELS,        # All free models
     USER_MODEL_PREFERENCES,  # User model preferences
-    USER_AGENT_MODE,         # NEW: Agent mode status
-    CODE_AGENT_PROMPT,       # NEW: Code agent system prompt
-    CODE_AGENT_MODELS,       # NEW: Code agent models
-    DEFAULT_MODEL,           # NEW: Default model constant
+    USER_AGENT_MODE,         # Agent mode status
+    CODE_AGENT_PROMPT,       # Code agent system prompt
+    CODE_AGENT_MODELS,       # Code agent models
+    PRIMARY_MODEL,           # 🆕 Primary multimodal model
+    IMAGE_GENERATION_ENABLED,  # 🆕 Image gen enabled
+    IMAGE_MODEL,             # 🆕 Image model
+    IMAGE_STYLES,            # 🆕 Available styles
 )
 from utils.ai_engine import AIEngine, get_ai_engine
 
@@ -1004,6 +1009,237 @@ _Tap a button to select model!_
 
 
 # ============================================================
+# 🎨 IMAGE GENERATION - /image & /generate COMMANDS (NEW!)
+# ============================================================
+
+async def image_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Generate AI Images using openrouter/auto-beta multimodal model!
+    
+    Usage:
+    /image a beautiful sunset over mountains
+    /image anime girl with cat
+    /image cyberpunk city at night
+    
+    The model generates REAL images using modalities: ["image", "text"]
+    """
+    user = update.effective_user
+    user_id = user.id
+    
+    # Get the prompt from command arguments
+    if not context.args:
+        # Show help if no prompt provided
+        keyboard = [
+            [InlineKeyboardButton("🌅 Example: Sunset", callback_data="img_example_sunset")],
+            [InlineKeyboardButton("🐱 Example: Cute Cat", callback_data="img_example_cat")],
+            [InlineKeyboardButton("🏙️ Example: Cyberpunk", callback_data="img_example_cyber")],
+            [InlineKeyboardButton("🎨 Example: Anime Art", callback_data="img_example_anime")],
+            [
+                InlineKeyboardButton("📋 Styles List", callback_data="img_styles"),
+                InlineKeyboardButton("💡 Tips", callback_data="img_tips"),
+            ],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        help_text = f"""🎨 **AI Image Generator** ✨
+
+**Usage:** `/image your description here`
+
+**Examples:**
+• `/image beautiful sunset over mountains`
+• `/image cute cat wearing sunglasses`
+• `/image cyberpunk city at night, neon lights`
+• `/image anime style girl with flowers`
+
+**Features:**
+✅ Real AI-generated images
+✅ Any style you can describe
+✅ High quality output
+✅ FREE to use!
+
+_Tap buttons below for examples or just send:_ `/image [your idea]`_
+"""
+        
+        await update.message.reply_text(help_text, reply_markup=reply_markup, parse_mode='Markdown')
+        return
+    
+    # Get the image prompt
+    prompt = " ".join(context.args)
+    
+    logger.chat(user.first_name or "Unknown", f"/image {prompt[:50]}", incoming=True)
+    
+    # Send "generating" message
+    status_msg = await update.message.reply_text(
+        f"🎨 **Generating your image...**\n\n"
+        f"📝 *Prompt:* `{prompt[:100]}`\n\n"
+        f"⏳ Please wait, creating magic... ✨",
+        parse_mode='Markdown'
+    )
+    
+    # Show typing action
+    typing_task = asyncio.create_task(
+        continuous_chat_action(update, CHAT_UPLOAD_PHOTO, 30)
+    )
+    
+    try:
+        # Call OpenRouter API for IMAGE generation
+        result = await generate_image(prompt)
+        
+        # Cancel typing
+        typing_task.cancel()
+        
+        if result.get("success"):
+            # Image generated successfully!
+            image_url = result.get("image_url")
+            image_base64 = result.get("image_base64")
+            
+            if image_url:
+                # Send as URL (if it's a web URL)
+                try:
+                    await status_msg.delete()
+                    await update.message.reply_photo(
+                        photo=image_url,
+                        caption=f"🎨 **Your Generated Image!**\n\n"
+                                f"📝 *Prompt:* `{prompt}`\n\n"
+                                f"_Powered by Auto-Beta Multimodal_ ✨",
+                                parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send photo from URL: {e}")
+                    await status_msg.edit_text(
+                        f"✅ **Image Generated!**\n\n"
+                        f"🔗 [Click to view]({image_url})\n\n"
+                        f"📝 *Prompt:* `{prompt}`",
+                        parse_mode='Markdown'
+                    )
+                    
+            elif image_base64:
+                # Send as base64 decoded image
+                try:
+                    image_bytes = base64.b64decode(image_base64.split(",")[1] if "," in image_base64 else image_base64)
+                    import io
+                    await status_msg.delete()
+                    await update.message.reply_photo(
+                        photo=io.BytesIO(image_bytes),
+                        caption=f"🎨 **Your Generated Image!**\n\n"
+                                f"📝 *Prompt:* `{prompt}`\n\n"
+                                f"_Powered by Auto-Beta Multimodal_ ✨",
+                        parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send base64 image: {e}")
+                    await status_msg.edit_text(
+                        "✅ Image generated but failed to send. Try again!",
+                        parse_mode='Markdown'
+                    )
+            
+            logger.success(f"Image generated for {user.first_name}: {prompt[:30]}")
+            
+        else:
+            # Error generating image
+            error_msg = result.get("error", "Unknown error")
+            logger.error(f"Image gen error: {error_msg}")
+            
+            await status_msg.edit_text(
+                f"😵 **Image Generation Failed**\n\n"
+                f"`{error_msg[:200]}`\n\n"
+                f"Please try again with a different prompt!",
+                parse_mode='Markdown'
+            )
+            
+    except Exception as e:
+        typing_task.cancel()
+        logger.error(f"Image command error: {e}")
+        
+        await status_msg.edit_text(
+            "😵 **Unexpected error occurred**\n\nPlease try again!",
+            parse_mode='Markdown'
+        )
+
+
+async def generate_image(prompt: str) -> dict:
+    """
+    Generate image using OpenRouter's auto-beta model with multimodal support.
+    
+    Uses modalities: ["image", "text"] for image generation!
+    """
+    try:
+        response = requests.post(
+            url=f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://t.me/Rahulxaibot",
+                "X-Title": "Nova AI Bot",
+            },
+            json={
+                "model": IMAGE_MODEL,  # "openrouter/auto-beta"
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"Generate an image: {prompt}"
+                    }
+                ],
+                "modalities": ["image", "text"],  # 🎨 KEY: Request image generation!
+            },
+            timeout=60  # 60 second timeout for image generation
+        )
+        
+        result = response.json()
+        
+        # Check for errors
+        if "error" in result:
+            return {
+                "success": False,
+                "error": result["error"].get("message", "API Error")
+            }
+        
+        # Extract image from response
+        if result.get("choices"):
+            message = result["choices"][0].get("message", {})
+            
+            # Check for images in response
+            if message.get("images"):
+                image_data = message["images"][0]
+                
+                # Check if it has URL
+                if "image_url" in image_data:
+                    image_url = image_data["image_url"].get("url")
+                    if image_url:
+                        return {"success": True, "image_url": image_url}
+                
+                # Check if it has base64 data
+                if "image_base64" in image_data or "b64_json" in image_data:
+                    b64_data = image_data.get("image_base64") or image_data.get("b64_json")
+                    if b64_data:
+                        return {"success": True, "image_base64": b64_data}
+            
+            # No image but maybe text response
+            text_content = message.get("content", "")
+            if text_content:
+                return {
+                    "success": False,
+                    "error": "Model returned text instead of image. Try being more specific in your prompt.",
+                    "text_response": text_content
+                }
+        
+        # No usable response
+        return {"success": False, "error": "No image in response"}
+        
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "Request timeout - image generation took too long"}
+    except requests.exceptions.RequestException as e:
+        return {"success": False, "error": f"API request failed: {str(e)[:100]}"}
+    except Exception as e:
+        return {"success": False, "error": f"Unexpected error: {str(e)[:100]}"}
+
+
+async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Alias for /image command - same functionality!"""
+    await image_command(update, context)
+
+
+# ============================================================
 # 🆕 CODE AGENT MODE - /agent COMMAND
 # ============================================================
 
@@ -1540,7 +1776,79 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer(text="❌ Model not found!", show_alert=True)
     
     # ============================================================
-    # 🆕 CODE AGENT CALLBACKS - NEW!
+    # 🎨 IMAGE GENERATION CALLBACKS - NEW!
+    # ============================================================
+    elif data.startswith("img_"):
+        action = data.replace("img_", "")
+        
+        # Example prompts for quick generation
+        examples = {
+            "sunset": "A beautiful golden sunset over snow-capped mountains, peaceful lake reflection",
+            "cat": "An adorable fluffy cat wearing tiny sunglasses, sitting on a windowsill, cute and funny",
+            "cyber": "A futuristic cyberpunk city at night with neon lights, flying cars, rain, blade runner style",
+            "anime": "Beautiful anime style girl with flowers in her hair, cherry blossoms, studio ghibli art style",
+        }
+        
+        if action in examples:
+            prompt = examples[action]
+            await query.edit_message_text(
+                f"🎨 **Generating...**\n\n📝 `{prompt}`\n\n⏳ Please wait... ✨",
+                parse_mode='Markdown'
+            )
+            # Generate the image
+            result = await generate_image(prompt)
+            
+            if result.get("success"):
+                image_url = result.get("image_url")
+                if image_url:
+                    try:
+                        await query.edit_message_media(
+                            media=input_media.InputMediaPhoto(
+                                media=image_url,
+                                caption=f"🎨 **Generated!**\n📝 `{prompt}`\n\n_Try /image [your idea]_ ✨"
+                            )
+                        )
+                    except Exception:
+                        await query.edit_message_text(
+                            f"✅ **Image Generated!**\n\n🔗 [View Image]({image_url})\n\n📝 `{prompt}`",
+                            parse_mode='Markdown'
+                        )
+            else:
+                await query.edit_message_text(
+                    f"😵 Generation failed: {result.get('error', 'Unknown')[:100]}",
+                    parse_mode='Markdown'
+                )
+        
+        elif action == "styles":
+            styles_text = "📋 **Available Image Styles**\n\n"
+            for style in IMAGE_STYLES:
+                styles_text += f"• `{style}`\n"
+            styles_text += "\n_Use: `/image [style] your prompt`_\n_Example: `/image anime cute cat`_"
+            await query.edit_message_text(styles_text, parse_mode='Markdown')
+        
+        elif action == "tips":
+            tips = """💡 **Image Generation Tips**
+
+✨ **Be Specific:**
+• "sunset over mountains" ❌
+• "golden sunset over snowy mountains with lake reflection" ✅
+
+🎨 **Mention Style:**
+• "anime style", "realistic", "oil painting", "pixel art"
+
+📐 **Add Details:**
+• Lighting: "neon lights", "golden hour", "moonlight"
+• Mood: "peaceful", "dramatic", "whimsical"
+• Quality: "4K", "highly detailed", "professional"
+
+🚫 **Avoid:**
+• NSFW content (will be blocked)
+• Very long prompts (keep under 100 words)
+• Copyrighted characters/names"""
+            await query.edit_message_text(tips, parse_mode='Markdown')
+    
+    # ============================================================
+    # 🆕 CODE AGENT CALLBACKS
     # ============================================================
     elif data.startswith("agent_"):
         action = data.replace("agent_", "")
@@ -2073,7 +2381,9 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("model", model_command))
     app.add_handler(CommandHandler("models", models_command))  # Model selector!
-    app.add_handler(CommandHandler("agent", agent_command))   # NEW: Code Agent mode!
+    app.add_handler(CommandHandler("agent", agent_command))   # Code Agent mode!
+    app.add_handler(CommandHandler("image", image_command))   # 🆕 Image generation!
+    app.add_handler(CommandHandler("generate", generate_command))  # 🆕 Alias for /image
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("font", font_command))
@@ -2110,17 +2420,17 @@ def main():
         except Exception:
             pass
     
-    # Set bot commands menu - UPDATED v2.2!
+    # Set bot commands menu - UPDATED v2.3!
     async def post_init(app):
         await app.bot.set_my_commands([
             BotCommand("start", "Start the bot"),
             BotCommand("help", "Help & commands"),
-            BotCommand("agent", "🤖 Code Agent Mode (NEW!)"),
-            BotCommand("models", "Choose AI Model (9)"),
+            BotCommand("image", "🎨 Generate AI Image (NEW!)"),
+            BotCommand("agent", "🤖 Code Agent Mode"),
+            BotCommand("models", "Model Info"),
             BotCommand("font", "Change text font"),
             BotCommand("shayari", "Get shayari"),
             BotCommand("quote", "Get inspirational quote"),
-            BotCommand("model", "Current model info"),
             BotCommand("clear", "Clear conversation"),
             BotCommand("stats", "Your statistics"),
         ])
@@ -2137,8 +2447,8 @@ def main():
     
     # Print separator
     print(f"\n{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}")
-    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.2 is LIVE!{Colors.RESET}")
-    print(f"  {Colors.DIM}{len(FREE_TEXT_MODELS)} Models | Code Agent | Bug Fixes{Colors.RESET}")
+    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.3 is LIVE!{Colors.RESET}")
+    print(f"  {Colors.DIM}Multimodal | Image Gen | Code Agent{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
     # Run the bot with conflict handling
