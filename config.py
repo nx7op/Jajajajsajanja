@@ -21,11 +21,11 @@ OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL: str = os.environ.get("AI_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
-# Alternative free models (fallback)
+# Alternative free models (fallback) - Updated working models!
 FALLBACK_MODELS: List[str] = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-    "google/gemma-2-9b-it:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "microsoft/phi-3-mini-128k-instruct:free", 
+    "huggingfaceh4/zephyr-7b-beta:free",
 ]
 
 # ============================================================

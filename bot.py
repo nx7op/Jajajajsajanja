@@ -384,6 +384,66 @@ _Use `/clear` to reset your conversation._
     await update.message.reply_text(text, parse_mode='Markdown')
 
 
+# ============================================================
+# 🧹 MARKDOWN SANITIZATION HELPERS
+# ============================================================
+
+def sanitize_markdown(text: str) -> str:
+    """
+    Sanitize markdown text to prevent Telegram parse errors.
+    Fixes broken bold, italic, code blocks, etc.
+    """
+    if not text:
+        return text
+    
+    # Fix unclosed formatting
+    lines = text.split('\n')
+    sanitized_lines = []
+    in_code_block = False
+    
+    for line in lines:
+        # Track code blocks
+        if '```' in line:
+            in_code_block = not in_code_block
+        
+        if not in_code_block:
+            # Count formatting characters
+            bold_count = line.count('**')
+            italic_count = line.count('*') - bold_count  # Exclude **
+            code_count = line.count('`')
+            
+            # Fix odd counts (unclosed tags)
+            if bold_count % 2 != 0:
+                line += '**'
+            if italic_count % 2 != 0:
+                line += '*'
+            if code_count % 2 != 0:
+                line += '`'
+        
+        sanitized_lines.append(line)
+    
+    result = '\n'.join(sanitized_lines)
+    
+    # Final safety: ensure all code blocks are closed
+    if result.count('```') % 2 != 0:
+        result += '\n```'
+    
+    return result
+
+
+def sanitize_for_code(text: str) -> str:
+    """Sanitize text for display inside code block (escape backticks)."""
+    return text.replace('`', "'").replace('```', "'''")
+
+
+async def safe_edit_status(message, new_text: str):
+    """Safely edit status message without raising errors."""
+    try:
+        await message.edit_text(new_text, parse_mode='Markdown')
+    except Exception:
+        pass  # Ignore errors during streaming updates
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle regular text messages - THE MAIN BRAIN!
@@ -429,8 +489,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stream_buffer = []
     last_update_time = [time.time()]
     
-    async def stream_callback(chunk: str):
-        """Callback for streaming chunks."""
+    def stream_callback(chunk: str):
+        """Callback for streaming chunks - SYNC function to avoid coroutine warning."""
         stream_buffer.append(chunk)
         
         # Update message every 2 seconds with accumulated content
@@ -439,13 +499,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             last_update_time[0] = current_time
             preview = ''.join(stream_buffer[-500:])  # Last 500 chars
             
-            try:
-                await status_msg.edit_text(
-                    f"⌨️ *Generating...*\n\n```\n{preview}```",
-                    parse_mode='Markdown'
-                )
-            except Exception:
-                pass  # Ignore edit errors during streaming
+            # Schedule async edit (non-blocking)
+            asyncio.create_task(
+                safe_edit_status(status_msg, f"⌨️ *Generating...*\n\n```\n{sanitize_for_code(preview)}```")
+            )
     
     try:
         # Get AI response
@@ -471,8 +528,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Success! Format response
-        ai_response = response.content
+        # Success! Format & sanitize response
+        ai_response = sanitize_markdown(response.content)
         
         # Truncate if too long for Telegram (4096 max)
         if len(ai_response) > 4000:
@@ -488,13 +545,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         final_text = f"{prefix}{ai_response}"
         
-        # Edit status message with final response
+        # Edit status message with final response (with error handling for parse errors)
         try:
             await status_msg.edit_text(final_text, parse_mode='Markdown')
         except Exception as e:
-            # If edit fails (message too old), send new message
-            logger.warning(f"Edit failed, sending new message: {e}")
-            await update.message.reply_text(final_text, parse_mode='Markdown')
+            # If markdown parsing fails, send without formatting
+            logger.warning(f"Markdown parse failed, sending plain text: {str(e)[:50]}")
+            plain_text = final_text.replace('*', '').replace('`', '').replace('_', '')
+            try:
+                await status_msg.edit_text(plain_text)
+            except Exception:
+                # If edit still fails, send new message
+                await update.message.reply_text(plain_text)
         
         # Log success
         latency_s = response.latency_ms / 1000
@@ -653,7 +715,7 @@ def main():
     
     logger.info("Initializing Nova AI Bot...")
     
-    # Build application
+    # Build application - Using new v20+ API to avoid deprecation warnings
     app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
@@ -661,6 +723,10 @@ def main():
         .write_timeout(45)
         .connect_timeout(45)
         .pool_timeout(45)
+        .get_updates_read_timeout(60)  # New v20+ method
+        .get_updates_write_timeout(60)  # New v20+ method
+        .get_updates_pool_timeout(60)  # New v20+ method
+        .get_updates_connection_timeout(60)  # New v20+ method
         .build()
     )
     
@@ -726,16 +792,11 @@ def main():
     print(f"  {Colors.DIM}Waiting for messages...{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
-    # Run the bot - OPTIMIZED FOR RAILWAY!
+    # Run the bot - Clean polling (timeouts set in ApplicationBuilder)
     app.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True,
         close_loop=False,
-        # Prevent multiple instances from conflicting
-        timeout=60,  # Long polling timeout
-        read_timeout=60,
-        write_timeout=60,
-        pool_timeout=60,
     )
 
 
