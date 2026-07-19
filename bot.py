@@ -36,7 +36,6 @@ from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
 )
-from telegram.constants import ChatAction
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -47,6 +46,18 @@ from telegram.ext import (
     ApplicationBuilder,
 )
 from telegram.error import TelegramError, Forbidden, BadRequest
+
+# ChatAction constants (compatible with all versions)
+CHAT_TYPING = "typing"
+CHAT_UPLOAD_PHOTO = "upload_photo"
+CHAT_RECORD_VIDEO = "record_video"
+CHAT_UPLOAD_VIDEO = "upload_video"
+CHAT_RECORD_AUDIO = "record_audio"
+CHAT_UPLOAD_AUDIO = "upload_audio"
+CHAT_UPLOAD_DOCUMENT = "upload_document"
+CHAT_FIND_LOCATION = "find_location"
+CHAT_RECORD_VIDEO_NOTE = "record_video_note"
+CHAT_UPLOAD_VIDEO_NOTE = "upload_video_note"
 
 # Import our modules
 from config import (
@@ -516,7 +527,7 @@ async def continuous_typing(chat_id: int, bot, interval: float = TYPING_DELAY):
     """
     try:
         while True:
-            await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+            await bot.send_chat_action(chat_id=chat_id, action=CHAT_TYPING)
             await asyncio.sleep(interval)
     except asyncio.CancelledError:
         # Expected when task is cancelled
