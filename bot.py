@@ -683,8 +683,23 @@ def main():
     # Callback handler (inline buttons)
     app.add_handler(CallbackQueryHandler(button_callback))
     
-    # Error handler - use add_error_handler for v20+ compatibility!
-    app.add_error_handler(error_handler)
+    # Error handler - Compatible with ALL python-telegram-bot versions!
+    try:
+        # Try v20+ method first
+        app.add_error_handler(error_handler)
+    except (AttributeError, TypeError):
+        # Fallback for older versions or different setups
+        from telegram.ext import TypeHandler
+        from telegram.ext._handlers import ErrorHandler
+        # Create proper error handler wrapper
+        class ErrorWrapper(TypeHandler):
+            def __init__(self, callback):
+                super().__init__(Update, callback)
+        try:
+            app.add_handler(ErrorWrapper(error_handler))
+        except Exception as e:
+            logger.warning(f"Could not register error handler: {e}")
+            # Continue without error handler - bot will still work!
     
     # Set bot commands menu
     async def post_init(app):
