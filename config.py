@@ -1,6 +1,16 @@
 """
-🤖 ADVANCED TELEGRAM AI BOT - Configuration
-OpenRouter API + Nemotron Ultra Model
+🤖 NOVA AI BOT v2.2 - Configuration
+====================================
+
+✅ MODELS:
+   - Default: Nemotron Ultra 550B (BEST)
+   - 8 Special Models (User Selected)
+   - Coding Agent Mode (/agent)
+
+✅ FEATURES:
+   - Font Changer, Shayari, Quotes
+   - Model Selection (/models)
+   - 🆕 CODE AGENT (/agent) - For Programming!
 """
 
 import os
@@ -22,148 +32,148 @@ OPENROUTER_MODEL: str = os.environ.get("AI_MODEL", "nvidia/nemotron-3-ultra-550b
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
 # ============================================================
-# ALL FREE MODELS (Confirmed Working on OpenRouter 2025!)
+# 🧠 MODELS CONFIGURATION (v2.2 - User Curated!)
 # ============================================================
 
-# Text Generation Models - BEST FOR CHAT
+# DEFAULT MODEL - The BEST One!
+DEFAULT_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+
+# ALL AVAILABLE MODELS (9 Total - User Selected!)
 FREE_TEXT_MODELS: dict = {
-    # NVIDIA Models (Best Quality!)
+    # 🔥 DEFAULT - BEST MODEL
     "nvidia/nemotron-3-ultra-550b-a55b:free": {
-        "name": "Nemotron Ultra 550B",
+        "name": "⭐ Nemotron Ultra 550B",
         "provider": "NVIDIA",
-        "desc": "🔥 BEST MODEL - Ultra powerful, human-like responses",
-        "category": "premium"
+        "desc": "🔥 DEFAULT - Best quality, human-like responses",
+        "category": "default",
+        "is_default": True
     },
+    
+    # 💻 CODE AGENT MODELS (Best for Programming!)
+    "cohere/north-mini-code:free": {
+        "name": "🤖 North Mini Code",
+        "provider": "Cohere",
+        "desc": "💻 SPECIALIZED for CODE - Debug, write, explain",
+        "category": "code",
+        "is_code_model": True
+    },
+    
+    # ⚡ NVIDIA SPECIAL MODELS
     "nvidia/nemotron-3-super-120b-a12b:free": {
         "name": "Nemotron Super 120B",
         "provider": "NVIDIA",
-        "desc": "⚡ Fast & Smart - Great for daily use",
+        "desc": "⚡ Fast & Smart - Great balance",
         "category": "fast"
     },
-    "nvidia/nemotron-3-nano-30b-a3b:free": {
-        "name": "Nemotron Nano 30B",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
+        "name": "🧠 Nano Omni Reasoning",
         "provider": "NVIDIA",
-        "desc": "💨 Lightweight & Quick",
-        "category": "ultra_fast"
+        "desc": "🧠 REASONING specialist - Logic & math",
+        "category": "reasoning"
+    },
+    "nvidia/nemotron-3.5-content-safety:free": {
+        "name": "🛡️ Content Safety",
+        "provider": "NVIDIA",
+        "desc": "🛡️ Safe & filtered responses",
+        "category": "special"
     },
     
-    # OpenAI OSS Models
-    "openai/gpt-oss-120b:free": {
-        "name": "GPT-OSS 120B",
-        "provider": "OpenAI",
-        "desc": "🧠 OpenAI's open source giant",
-        "category": "premium"
-    },
-    "openai/gpt-oss-20b:free": {
-        "name": "GPT-OSS 20B",
-        "provider": "OpenAI",
-        "desc": "⚡ OpenAI's fast model",
-        "category": "fast"
-    },
-    
-    # Llama Models (Meta)
-    "llama/llama-3.2-3b-instruct:free": {
-        "name": "Llama 3.2 3B",
-        "provider": "Meta",
-        "desc": "💨 Small but capable",
-        "category": "ultra_fast"
-    },
-    "llama/llama-3.3-70b-instruct:free": {
-        "name": "Llama 3.3 70B",
-        "provider": "Meta",
-        "desc": "🎯 Balanced performance",
-        "category": "balanced"
-    },
-    "nousresearch/hermes-3-llama-3.1-405b:free": {
-        "name": "Hermes 3 405B",
-        "provider": "NousResearch",
-        "desc": "🔥 Massive LLM - Great for complex tasks",
-        "category": "premium"
-    },
-    
-    # Google Gemma Models
-    "google/gemma-4-26b-a4b-it:free": {
-        "name": "Gemma 4 26B",
-        "provider": "Google",
-        "desc": "✨ Google's latest - Creative & smart",
-        "category": "balanced"
-    },
-    "google/gemma-4-31b-it:free": {
-        "name": "Gemma 4 31B",
-        "provider": "Google",
-        "desc": "🚀 Slightly bigger Gemma",
-        "category": "balanced"
-    },
-    
-    # Qwen Models (Alibaba)
-    "qwen/qwen3-next-80b-a3b-instruct:free": {
-        "name": "Qwen3 Next 80B",
-        "provider": "Qwen/Alibaba",
-        "desc": "⚡ Alibaba's next-gen model",
-        "category": "fast"
-    },
-    "qwen/qwen3-coder-480b-a35b:free": {
-        "name": "Qwen3 Coder 480B",
-        "provider": "Qwen/Alibaba",
-        "desc": "💻 BEST FOR CODE - Massive coding model",
-        "category": "code"
-    },
-    
-    # Poolside Models
+    # 🏊 POOLSIDE MODELS
     "poolside/laguna-m.1:free": {
         "name": "Laguna M.1",
         "provider": "Poolside",
-        "desc": "🏊 New contender - Try it out!",
+        "desc": "🏊 New AI model - Try it!",
         "category": "experimental"
     },
     "poolside/laguna-xs-2.1:free": {
-        "name": "Laguna XS 2.1",
+        "name": "💨 Laguna XS 2.1",
         "provider": "Poolside",
-        "desc": "💨 Tiny & fast experimental model",
+        "desc": "💨 Ultra fast - Instant replies",
         "category": "ultra_fast"
     },
     
-    # Tencent Model
+    # 🦙 META LLAMA
+    "meta-llama/llama-3.3-70b-instruct:free": {
+        "name": "Llama 3.3 70B",
+        "provider": "Meta",
+        "desc": "🦙 Meta's best open model",
+        "category": "balanced"
+    },
+    
+    # 🇨🇳 TENCENT
     "tencent/hy3:free": {
         "name": "HY3",
         "provider": "Tencent",
-        "desc": "🇨🇳 Chinese tech giant's model",
+        "desc": "🇨🇳 Tencent's powerful model",
         "category": "experimental"
-    },
-    
-    # Liquid AI
-    "liquid/lfm-2.5-1.2b-instruct:free": {
-        "name": "LFM 2.5 1.2B",
-        "provider": "Liquid AI",
-        "desc": "⚡ Ultra tiny - Instant responses!",
-        "category": "ultra_fast"
-    },
-    
-    # Special Models
-    "venice/uncensored:free": {
-        "name": "Venice Uncensored",
-        "provider": "Venice",
-        "desc": "🔓 No filters - Raw responses",
-        "category": "special"
     },
 }
 
+# EMBEDDING MODEL (For special features)
+EMBEDDING_MODEL: str = "nvidia/nemotron-3-embed-1b:free"
+
+# CODE AGENT MODELS (Auto-used in /agent mode)
+CODE_AGENT_MODELS: list = [
+    "cohere/north-mini-code:free",           # PRIMARY code model
+    "nvidia/nemotron-3-ultra-550b-a55b:free", # Fallback
+]
+
 # Fallback models list (for auto-failover)
 FALLBACK_MODELS: List[str] = [
-    "nvidia/nemotron-3-super-120b-a12b:free",      # Best fallback
-    "openai/gpt-oss-20b:free",                       # OpenAI backup
-    "llama/llama-3.2-3b-instruct:free",              # Small & fast
-    "google/gemma-4-26b-a4b-it:free",                 # Google backup
-    "qwen/qwen3-next-80b-a3b-instruct:free",          # Qwen backup
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "poolside/laguna-m.1:free",
 ]
 
 # User-selected model storage (user_id -> model_id)
 USER_MODEL_PREFERENCES: dict = {}
 
+# User's agent mode status (user_id -> bool)
+USER_AGENT_MODE: dict = {}
+
 # ============================================================
-# AI BEHAVIOR CONFIGURATION
+# 🤖 CODE AGENT SYSTEM PROMPT
 # ============================================================
 
+CODE_AGENT_PROMPT: str = """You are Nova Code Agent - an EXPERT PROGRAMMING ASSISTANT! 💻🚀
+
+Your capabilities:
+✅ Write clean, efficient, well-documented code
+✅ Debug and fix errors with explanations
+✅ Explain complex code simply
+✅ Suggest optimizations and best practices
+✅ Generate code in ANY language (Python, JS, Java, C++, Go, Rust, etc.)
+✅ Help with algorithms, data structures, system design
+✅ Review code and suggest improvements
+✅ Convert code between languages
+✅ Write tests and documentation
+
+RESPONSE FORMAT:
+1. **Code blocks** with language syntax highlighting
+2. **Step-by-step explanations** for complex logic
+3. **Comments** in code for clarity
+4. **Example usage** after each solution
+5. **Time/Space complexity** analysis when relevant
+
+RULES:
+- Always provide WORKING code (test it mentally before output)
+- Include error handling in examples
+- Use modern best practices (not outdated patterns)
+- If user is beginner, explain MORE; if expert, be concise
+- Ask clarifying questions if requirements are unclear
+- Suggest edge cases and potential issues
+
+SPECIAL COMMANDS you can handle:
+- "/debug [code]" - Find and fix bugs
+- "/optimize [code]" - Make it faster/better
+- "/explain [code]" - Line by line explanation
+- "/convert [code] to [language]" - Language translation
+- "/test [code]" - Write test cases
+
+You sound like a senior developer helping a junior - patient, knowledgeable, practical.
+Use emojis sparingly but effectively (🐛 for bugs, ⚡ for optimization, ✅ for success)."""
+
+# Normal chat system prompt
 SYSTEM_PROMPT: str = """You are Nova, a cool AI assistant - like a smart friend who happens to be an AI! 🤖
 
 Your personality:
@@ -281,6 +291,7 @@ def get_env_info() -> dict:
             "stream": "✅ Streaming" if STREAM_RESPONSES else "❌",
             "voice": "✅" if ENABLE_VOICE else "❌",
             "memory": "✅ Context Memory",
+            "agent": "✅ Code Agent Mode",
         }
     }
 
@@ -289,10 +300,11 @@ def get_env_info() -> dict:
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 print("\n" + "="*60)
-print("🤖 NOVA AI BOT - Configuration Loaded")
+print("🤖 NOVA AI BOT v2.2 - Configuration Loaded")
 print("="*60)
-print(f"   Model: {OPENROUTER_MODEL}")
+print(f"   Default Model: {DEFAULT_MODEL}")
+print(f"   Total Models: {len(FREE_TEXT_MODELS)}")
+print(f"   Code Agent: ✅ Enabled")
 print(f"   Max Tokens: {MAX_TOKENS}")
-print(f"   Temperature: {TEMPERATURE}")
 print(f"   Memory: {MAX_HISTORY_PER_USER} messages/user")
 print("="*60 + "\n")

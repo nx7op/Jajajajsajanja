@@ -1,24 +1,25 @@
 """
-🚀 NOVA AI BOT - ULTRA ADVANCED v2.1
+🚀 NOVA AI BOT - ULTRA ADVANCED v2.2
 =======================================
 
 ✅ FIXED BUGS:
    - 'Message' object has no attribute 'message'
    - Inline query timeout issues  
    - Markdown entity parsing errors
-   - Fallback models not working (2025 update!)
+   - /models NameError bug fixed!
 
-✅ NEW FEATURES:
+✅ FEATURES:
    - 🎨 Font Changer (15+ Fancy Fonts)
    - 📝 Shayari Generator
    - 💬 Quotes Generator
    - ⚡ Ultra Fast Inline Mode
    - 🤖 Human-like Responses
-   - 🧠 MODEL SELECTOR (/models) - 17+ Free Models!
-   - 🔥 All 2025 Working Free Models Added!
+   - 🧠 MODEL SELECTOR (/models) - 9 Free Models!
+   - 🆕 CODE AGENT MODE (/agent) - Programming Assistant!
+   - 🔥 User Curated Model List (v2.2)
 
 Author: Nova AI Team
-Model: nvidia/nemotron-3-ultra-550b-a55b:free
+Version: 2.2.0
 """
 
 import os
@@ -82,8 +83,12 @@ from config import (
     MAX_RESPONSE_TIME,
     RATE_LIMIT_MINUTE,
     RATE_LIMIT_HOUR,
-    FREE_TEXT_MODELS,        # NEW: All free models
-    USER_MODEL_PREFERENCES,  # NEW: User model preferences
+    FREE_TEXT_MODELS,        # All free models
+    USER_MODEL_PREFERENCES,  # User model preferences
+    USER_AGENT_MODE,         # NEW: Agent mode status
+    CODE_AGENT_PROMPT,       # NEW: Code agent system prompt
+    CODE_AGENT_MODELS,       # NEW: Code agent models
+    DEFAULT_MODEL,           # NEW: Default model constant
 )
 from utils.ai_engine import AIEngine, get_ai_engine
 
@@ -998,6 +1003,81 @@ _Tap a button to select model!_
     logger.success(f"Model selector shown to {user.first_name}")
 
 
+# ============================================================
+# 🆕 CODE AGENT MODE - /agent COMMAND
+# ============================================================
+
+async def agent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Toggle CODE AGENT MODE - Special programming assistant!
+    
+    When enabled:
+    - Uses specialized code model (Cohere North Mini Code)
+    - Expert programming system prompt
+    - Better for debugging, coding, technical tasks
+    """
+    user = update.effective_user
+    user_id = user.id
+    
+    logger.chat(user.first_name or "Unknown", "/agent", incoming=True)
+    
+    # Check current status
+    is_agent_mode = USER_AGENT_MODE.get(user_id, False)
+    
+    # Build keyboard
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🤖 ACTIVATE AGENT MODE", 
+                callback_data="agent_on"
+            ),
+        ],
+        [
+            InlineKeyboardButton("💬 Normal Chat Mode", callback_data="agent_off"),
+            InlineKeyboardButton("ℹ️ How it works", callback_data="agent_help"),
+        ],
+        [
+            InlineKeyboardButton("🐛 Debug Code", callback_data="agent_debug"),
+            InlineKeyboardButton("⚡ Optimize", callback_data="agent_optimize"),
+        ],
+        [
+            InlineKeyboardButton("📋 Supported Languages", callback_data="agent_langs"),
+        ],
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    status_emoji = "🤖✅" if is_agent_mode else "💬"
+    status_text = "**ACTIVE** - Using Code Agent Model!" if is_agent_mode else "**OFF** - Normal chat mode"
+    
+    text = f"""💻 **NOVA CODE AGENT** {status_emoji}
+
+Status: {status_text}
+
+**What is Code Agent Mode?**
+A specialized programming assistant that:
+• ✅ Writes clean, documented code
+• 🐛 Debugs errors with explanations
+• ⚡ Optimizes code performance
+• 📖 Explains complex logic simply
+• 🔀 Converts between languages
+• ✍️ Writes tests & documentation
+
+**Special Commands (in Agent mode):**
+• `/debug [code]` - Find bugs
+• `/optimize [code]` - Make faster
+• `/explain [code]` - Line by line
+• `/convert to [lang]` - Translate code
+
+**Model:** `Cohere North Mini Code` (FREE!)
+
+_Tap buttons below to control!_
+"""
+    
+    await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    logger.success(f"Agent menu shown to {user.first_name}")
+
+
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Clear conversation memory."""
     user_id = update.effective_user.id
@@ -1196,12 +1276,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Get AI response - USE USER'S PREFERRED MODEL!
         engine = get_ai_engine()
         
+        # Check if user is in CODE AGENT MODE
+        is_agent_mode = USER_AGENT_MODE.get(user_id, False)
+        
         # Check if user has a preferred model
         user_model = USER_MODEL_PREFERENCES.get(user_id)
         
         # Override model for this request (temporary)
         original_model = None
-        if user_model and user_model in FREE_TEXT_MODELS:
+        original_system_prompt = None
+        
+        if is_agent_mode:
+            # AGENT MODE: Use code model & prompt
+            original_model = engine.primary_model
+            original_system_prompt = getattr(engine, 'system_prompt', None)
+            
+            # Set code model (Cohere North Mini Code)
+            engine.primary_model = CODE_AGENT_MODELS[0]
+            engine.system_prompt = CODE_AGENT_PROMPT
+            
+            logger.info(f"🤖 CODE AGENT MODE for {user_name}")
+        elif user_model and user_model in FREE_TEXT_MODELS:
+            # Normal mode with custom model
             original_model = engine.primary_model
             engine.primary_model = user_model
             logger.info(f"Using {FREE_TEXT_MODELS[user_model]['name']} for {user_name}")
@@ -1213,9 +1309,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stream_callback=stream_callback
             )
         finally:
-            # Restore original model
+            # Restore original settings
             if original_model:
                 engine.primary_model = original_model
+            if original_system_prompt is not None:
+                engine.system_prompt = original_system_prompt
         
         # Cancel typing indicator
         typing_task.cancel()
@@ -1246,7 +1344,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Build final message
         prefix = ""
-        if response.is_fallback:
+        if is_agent_mode:
+            prefix = "🤖 *Code Agent Mode*\n\n"
+        elif response.is_fallback:
             prefix = "🔄 *Using backup model*\n\n"
         
         final_text = f"{prefix}{ai_response}"
@@ -1438,6 +1538,110 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.success(f"{user.first_name} selected model: {model_info['name']}")
             else:
                 await query.answer(text="❌ Model not found!", show_alert=True)
+    
+    # ============================================================
+    # 🆕 CODE AGENT CALLBACKS - NEW!
+    # ============================================================
+    elif data.startswith("agent_"):
+        action = data.replace("agent_", "")
+        user_id = user.id
+        
+        if action == "on":
+            # ACTIVATE AGENT MODE
+            USER_AGENT_MODE[user_id] = True
+            # Also set code model
+            USER_MODEL_PREFERENCES[user_id] = CODE_AGENT_MODELS[0]
+            
+            await query.edit_message_text(
+                "🤖 **CODE AGENT MODE ACTIVATED!** ✅\n\n"
+                "💻 **Model:** `Cohere North Mini Code`\n"
+                "🧠 **Mode:** Expert Programmer\n\n"
+                "**Now I can help you with:**\n"
+                "• Writing code in any language\n"
+                "• Debugging errors\n"
+                "• Optimizing performance\n"
+                "• Explaining complex logic\n\n"
+                "_Just send your code or question!_\n\n"
+                "*Use `/agent` again to disable*",
+                parse_mode='Markdown'
+            )
+            logger.success(f"{user.first_name} activated CODE AGENT mode!")
+        
+        elif action == "off":
+            # DEACTIVATE AGENT MODE
+            if user_id in USER_AGENT_MODE:
+                del USER_AGENT_MODE[user_id]
+            # Reset to default model
+            if user_id in USER_MODEL_PREFERENCES:
+                del USER_MODEL_PREFERENCES[user_id]
+            
+            await query.edit_message_text(
+                "💬 **Agent Mode Disabled**\n\n"
+                "Back to normal chat mode with default model.\n\n"
+                "_Use `/agent` to enable again!_",
+                parse_mode='Markdown'
+            )
+            logger.info(f"{user.first_name} disabled agent mode")
+        
+        elif action == "help":
+            await query.edit_message_text(
+                "📖 **How Code Agent Works**\n\n"
+                "**1. Activate** - Tap 'ACTIVATE AGENT MODE'\n"
+                "**2. Send code/question** - Just type normally!\n"
+                "**3. Get expert help** - I'll respond as a senior dev\n\n"
+                "**Special prefixes you can use:**\n"
+                "• `debug: [code]` - Find bugs\n"
+                "• `optimize: [code]` - Make it faster\n"
+                "• `explain: [code]` - Line by line\n"
+                "• `convert: [code] to python` - Change language\n\n"
+                "**Supported Languages:**\n"
+                "Python, JavaScript, TypeScript, Java, C++, C#, Go,\n"
+                "Rust, Swift, Kotlin, Ruby, PHP, SQL, HTML/CSS,\n"
+                "Shell/Bash, and more!\n\n"
+                "_Best part? It's completely FREE!_ 🎉",
+                parse_mode='Markdown'
+            )
+        
+        elif action == "debug":
+            USER_AGENT_MODE[user_id] = True
+            await query.edit_message_text(
+                "🐛 **DEBUG MODE**\n\n"
+                "Send me your code and I'll:\n"
+                "1. Find bugs & errors\n"
+                "2. Explain what's wrong\n"
+                "3. Give fixed code\n"
+                "4. Prevent future issues\n\n"
+                "_Just paste your code below!_",
+                parse_mode='Markdown'
+            )
+        
+        elif action == "optimize":
+            USER_AGENT_MODE[user_id] = True
+            await query.edit_message_text(
+                "⚡ **OPTIMIZE MODE**\n\n"
+                "Send me your code and I'll:\n"
+                "1. Analyze performance\n"
+                "2. Suggest improvements\n"
+                "3. Give optimized code\n"
+                "4. Compare before/after\n\n"
+                "_Just paste your code below!_",
+                parse_mode='Markdown'
+            )
+        
+        elif action == "langs":
+            await query.edit_message_text(
+                "📋 **Supported Programming Languages**\n\n"
+                "💻 **Popular:** Python, JavaScript, TypeScript, Java\n"
+                "🔧 **Systems:** C, C++, Go, Rust, Swift\n"
+                "🌐 **Web:** HTML, CSS, PHP, Ruby\n"
+                "📱 **Mobile:** Kotlin, Dart, Swift\n"
+                "🗄️ **Database:** SQL, NoSQL queries\n"
+                "⚙️ **DevOps:** Shell/Bash, YAML, Docker\n"
+                "📊 **Data:** R, MATLAB, Julia\n"
+                "🔮 **Other:** Lua, Perl, Assembly, Scala\n\n"
+                "_And many more! Just ask!_",
+                parse_mode='Markdown'
+            )
 
 
 # ============================================================
@@ -1868,7 +2072,8 @@ def main():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("model", model_command))
-    app.add_handler(CommandHandler("models", models_command))  # NEW: Model selector!
+    app.add_handler(CommandHandler("models", models_command))  # Model selector!
+    app.add_handler(CommandHandler("agent", agent_command))   # NEW: Code Agent mode!
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("font", font_command))
@@ -1905,12 +2110,13 @@ def main():
         except Exception:
             pass
     
-    # Set bot commands menu - UPDATED!
+    # Set bot commands menu - UPDATED v2.2!
     async def post_init(app):
         await app.bot.set_my_commands([
             BotCommand("start", "Start the bot"),
             BotCommand("help", "Help & commands"),
-            BotCommand("models", "🆕 Choose AI Model (17+)"),
+            BotCommand("agent", "🤖 Code Agent Mode (NEW!)"),
+            BotCommand("models", "Choose AI Model (9)"),
             BotCommand("font", "Change text font"),
             BotCommand("shayari", "Get shayari"),
             BotCommand("quote", "Get inspirational quote"),
@@ -1931,8 +2137,8 @@ def main():
     
     # Print separator
     print(f"\n{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}")
-    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.1 is LIVE!{Colors.RESET}")
-    print(f"  {Colors.DIM}{len(FREE_TEXT_MODELS)} Free Models | Bug Fixes | New Features{Colors.RESET}")
+    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.2 is LIVE!{Colors.RESET}")
+    print(f"  {Colors.DIM}{len(FREE_TEXT_MODELS)} Models | Code Agent | Bug Fixes{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
     # Run the bot with conflict handling
