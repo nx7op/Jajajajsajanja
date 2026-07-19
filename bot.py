@@ -1,11 +1,12 @@
 """
-🚀 NOVA AI BOT - ULTRA ADVANCED v2.0
+🚀 NOVA AI BOT - ULTRA ADVANCED v2.1
 =======================================
 
 ✅ FIXED BUGS:
    - 'Message' object has no attribute 'message'
-   - Inline query timeout issues
+   - Inline query timeout issues  
    - Markdown entity parsing errors
+   - Fallback models not working (2025 update!)
 
 ✅ NEW FEATURES:
    - 🎨 Font Changer (15+ Fancy Fonts)
@@ -13,7 +14,8 @@
    - 💬 Quotes Generator
    - ⚡ Ultra Fast Inline Mode
    - 🤖 Human-like Responses
-   - 🔥 Advanced Commands
+   - 🧠 MODEL SELECTOR (/models) - 17+ Free Models!
+   - 🔥 All 2025 Working Free Models Added!
 
 Author: Nova AI Team
 Model: nvidia/nemotron-3-ultra-550b-a55b:free
@@ -80,6 +82,8 @@ from config import (
     MAX_RESPONSE_TIME,
     RATE_LIMIT_MINUTE,
     RATE_LIMIT_HOUR,
+    FREE_TEXT_MODELS,        # NEW: All free models
+    USER_MODEL_PREFERENCES,  # NEW: User model preferences
 )
 from utils.ai_engine import AIEngine, get_ai_engine
 
@@ -889,29 +893,109 @@ _🔄 Click buttons for more quotes!_
 
 async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show current model information."""
-    env_info = get_env_info()
+    user = update.effective_user
+    user_id = user.id
+    
+    # Get user's preferred model (if any)
+    preferred_model = USER_MODEL_PREFERENCES.get(user_id)
+    current_model = preferred_model or "nvidia/nemotron-3-ultra-550b-a55b:free"
+    
+    # Get model info
+    if current_model in FREE_TEXT_MODELS:
+        model_info = FREE_TEXT_MODELS[current_model]
+        model_name = model_info['name']
+        model_desc = model_info['desc']
+    else:
+        model_name = current_model.split('/')[-1].replace(':free', '')
+        model_desc = "Default Model"
     
     text = f"""
 🧠 **AI Model Information**
 
-**Active Model:** `{env_info['model']}`
+**Current Model:** `{model_name}`
+{model_desc}
 
-**Configuration:**
-• Max Tokens: `{env_info['max_tokens']}`
-• Temperature: `{env_info['temperature']}`
-• Memory: `{env_info['memory']}`
+**Total Free Models:** `{len(FREE_TEXT_MODELS)}`
 
-**New Features Enabled:**
-✅ Font Changer (15+ fonts)
-✅ Shayari Generator
-✅ Quotes Generator
-✅ Ultra Fast Inline Mode
-
-**Provider:** OpenRouter API
-**Status:** ✅ Online & Fast!
+_Use `/models` to switch models!_
 """
     
     await update.message.reply_text(text, parse_mode='Markdown')
+
+
+async def models_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show all available models with selection keyboard - NEW!"""
+    user = update.effective_user
+    user_id = user.id
+    
+    logger.chat(user.first_name or "Unknown", "/models", incoming=True)
+    
+    # Get current model
+    preferred_model = USER_MODEL_PREFERENCES.get(user_id)
+    current_model_id = preferred_model or "nvidia/nemotron-3-ultra-550b-a55b:free"
+    
+    # Build model list by category
+    categories = {
+        "🔥 Premium": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] == 'premium'],
+        "⚡ Fast": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] == 'fast'],
+        "💨 Ultra Fast": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] == 'ultra_fast'],
+        "🎯 Balanced": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] == 'balanced'],
+        "💻 Code": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] == 'code'],
+        "🧪 Special": [m for m, info in FREE_TEXT_MODELS.items() if info['category'] in ['special', 'experimental']],
+    }
+    
+    # Build keyboard
+    keyboard = []
+    
+    # Add category headers and models
+    for cat_name, models in categories.items():
+        if models:
+            row = []
+            for model_id in models[:2]:  # Max 2 per row
+                model_info = FREE_TEXT_MODELS[model_id]
+                short_name = model_info['name'].split()[0]  # First word only
+                
+                # Mark current model with ✅
+                is_current = "✅" if model_id == current_model else ""
+                
+                row.append(InlineKeyboardButton(
+                    f"{is_current}{short_name}", 
+                    callback_data=f"model_{model_id}"
+                ))
+            if row:
+                keyboard.append(row)
+    
+    # Add action buttons
+    keyboard.append([
+        InlineKeyboardButton("🔄 Reset to Default", callback_data="model_reset"),
+        InlineKeyboardButton("ℹ️ Current Info", callback_data="model_info")
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Current model name
+    if current_model_id in FREE_TEXT_MODELS:
+        current_name = FREE_TEXT_MODELS[current_model_id]['name']
+    else:
+        current_name = current_model_id.split('/')[-1]
+    
+    text = f"""🧠 **Model Selector** 🤖
+
+**Your Current Model:** `{current_name}`
+
+**Available Models:** {len(FREE_TEXT_MODELS)} Free!
+
+**Categories:**
+• 🔥 **Premium** - Best quality (slower)
+• ⚡ **Fast** - Quick responses
+• 💨 **Ultra Fast** - Instant!
+• 💻 **Code** - Best for programming
+
+_Tap a button to select model!_
+"""
+    
+    await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    logger.success(f"Model selector shown to {user.first_name}")
 
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1109,13 +1193,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
     
     try:
-        # Get AI response
+        # Get AI response - USE USER'S PREFERRED MODEL!
         engine = get_ai_engine()
-        response = await engine.chat(
-            user_id=user_id,
-            message=message,
-            stream_callback=stream_callback
-        )
+        
+        # Check if user has a preferred model
+        user_model = USER_MODEL_PREFERENCES.get(user_id)
+        
+        # Override model for this request (temporary)
+        original_model = None
+        if user_model and user_model in FREE_TEXT_MODELS:
+            original_model = engine.primary_model
+            engine.primary_model = user_model
+            logger.info(f"Using {FREE_TEXT_MODELS[user_model]['name']} for {user_name}")
+        
+        try:
+            response = await engine.chat(
+                user_id=user_id,
+                message=message,
+                stream_callback=stream_callback
+            )
+        finally:
+            # Restore original model
+            if original_model:
+                engine.primary_model = original_model
         
         # Cancel typing indicator
         typing_task.cancel()
@@ -1284,6 +1384,60 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎨 **Font: {font_style.upper()}**\n\n{sample}\n\n_Use `/font:{font_style} your text`_",
             parse_mode='Markdown'
         )
+    
+    # MODEL SELECTION CALLBACKS - NEW!
+    elif data.startswith("model_"):
+        model_id = data.replace("model_", "")
+        user_id = user.id
+        
+        if model_id == "reset":
+            # Reset to default
+            if user_id in USER_MODEL_PREFERENCES:
+                del USER_MODEL_PREFERENCES[user_id]
+            await query.edit_message_text(
+                "🔄 **Model Reset!**\n\nUsing default model now:\n`Nemotron Ultra 550B`\n\n_Enjoy the best quality!_",
+                parse_mode='Markdown'
+            )
+        
+        elif model_id == "info":
+            # Show current model info
+            preferred_model = USER_MODEL_PREFERENCES.get(user_id)
+            current = preferred_model or "nvidia/nemotron-3-ultra-550b-a55b:free"
+            
+            if current in FREE_TEXT_MODELS:
+                info = FREE_TEXT_MODELS[current]
+                await query.edit_message_text(
+                    f"🧠 **Current Model Info**\n\n"
+                    f"**Name:** {info['name']}\n"
+                    f"**Provider:** {info['provider']}\n"
+                    f"**ID:** `{current}`\n\n"
+                    f"{info['desc']}",
+                    parse_mode='Markdown'
+                )
+            else:
+                await query.edit_message_text(
+                    f"🧠 **Current Model:** `{current}`",
+                    parse_mode='Markdown'
+                )
+        
+        else:
+            # Select a specific model
+            if model_id in FREE_TEXT_MODELS:
+                # Save user preference
+                USER_MODEL_PREFERENCES[user_id] = model_id
+                
+                model_info = FREE_TEXT_MODELS[model_id]
+                
+                await query.edit_message_text(
+                    f"✅ **Model Selected!**\n\n"
+                    f"**{model_info['name']}**\n"
+                    f"{model_info['desc']}\n\n"
+                    f"_Your next message will use this model!_",
+                    parse_mode='Markdown'
+                )
+                logger.success(f"{user.first_name} selected model: {model_info['name']}")
+            else:
+                await query.answer(text="❌ Model not found!", show_alert=True)
 
 
 # ============================================================
@@ -1691,7 +1845,7 @@ def main():
         for warn in errors:
             logger.warning(warn)
     
-    logger.info("Initializing Nova AI Bot v2.0...")
+    logger.info("Initializing Nova AI Bot v2.1...")
     
     # Build application with optimized timeouts
     app = (
@@ -1714,6 +1868,7 @@ def main():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("model", model_command))
+    app.add_handler(CommandHandler("models", models_command))  # NEW: Model selector!
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("font", font_command))
@@ -1755,11 +1910,11 @@ def main():
         await app.bot.set_my_commands([
             BotCommand("start", "Start the bot"),
             BotCommand("help", "Help & commands"),
+            BotCommand("models", "🆕 Choose AI Model (17+)"),
             BotCommand("font", "Change text font"),
-            BotCommand("fonts", "List all fonts"),
             BotCommand("shayari", "Get shayari"),
             BotCommand("quote", "Get inspirational quote"),
-            BotCommand("model", "AI model info"),
+            BotCommand("model", "Current model info"),
             BotCommand("clear", "Clear conversation"),
             BotCommand("stats", "Your statistics"),
         ])
@@ -1771,13 +1926,13 @@ def main():
     
     logger.success("Bot initialized successfully!")
     logger.info(f"Model: {get_env_info()['model']}")
+    logger.info(f"Free Models Available: {len(FREE_TEXT_MODELS)}")
     logger.info(f"Starting polling on port {PORT}...")
     
     # Print separator
     print(f"\n{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}")
-    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.0 is LIVE!{Colors.RESET}")
-    print(f"  {Colors.DIM}All bugs fixed! New features added!{Colors.RESET}")
-    print(f"  {Colors.DIM}Waiting for messages...{Colors.RESET}")
+    print(f"  {Colors.BOLD}🚀 Nova AI Bot v2.1 is LIVE!{Colors.RESET}")
+    print(f"  {Colors.DIM}{len(FREE_TEXT_MODELS)} Free Models | Bug Fixes | New Features{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
     # Run the bot

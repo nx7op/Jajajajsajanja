@@ -21,15 +21,144 @@ OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL: str = os.environ.get("AI_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
-# Alternative free models (fallback) - UPDATED WORKING 2025 MODELS!
-# These are confirmed FREE models on OpenRouter
+# ============================================================
+# ALL FREE MODELS (Confirmed Working on OpenRouter 2025!)
+# ============================================================
+
+# Text Generation Models - BEST FOR CHAT
+FREE_TEXT_MODELS: dict = {
+    # NVIDIA Models (Best Quality!)
+    "nvidia/nemotron-3-ultra-550b-a55b:free": {
+        "name": "Nemotron Ultra 550B",
+        "provider": "NVIDIA",
+        "desc": "🔥 BEST MODEL - Ultra powerful, human-like responses",
+        "category": "premium"
+    },
+    "nvidia/nemotron-3-super-120b-a12b:free": {
+        "name": "Nemotron Super 120B",
+        "provider": "NVIDIA",
+        "desc": "⚡ Fast & Smart - Great for daily use",
+        "category": "fast"
+    },
+    "nvidia/nemotron-3-nano-30b-a3b:free": {
+        "name": "Nemotron Nano 30B",
+        "provider": "NVIDIA",
+        "desc": "💨 Lightweight & Quick",
+        "category": "ultra_fast"
+    },
+    
+    # OpenAI OSS Models
+    "openai/gpt-oss-120b:free": {
+        "name": "GPT-OSS 120B",
+        "provider": "OpenAI",
+        "desc": "🧠 OpenAI's open source giant",
+        "category": "premium"
+    },
+    "openai/gpt-oss-20b:free": {
+        "name": "GPT-OSS 20B",
+        "provider": "OpenAI",
+        "desc": "⚡ OpenAI's fast model",
+        "category": "fast"
+    },
+    
+    # Llama Models (Meta)
+    "llama/llama-3.2-3b-instruct:free": {
+        "name": "Llama 3.2 3B",
+        "provider": "Meta",
+        "desc": "💨 Small but capable",
+        "category": "ultra_fast"
+    },
+    "llama/llama-3.3-70b-instruct:free": {
+        "name": "Llama 3.3 70B",
+        "provider": "Meta",
+        "desc": "🎯 Balanced performance",
+        "category": "balanced"
+    },
+    "nousresearch/hermes-3-llama-3.1-405b:free": {
+        "name": "Hermes 3 405B",
+        "provider": "NousResearch",
+        "desc": "🔥 Massive LLM - Great for complex tasks",
+        "category": "premium"
+    },
+    
+    # Google Gemma Models
+    "google/gemma-4-26b-a4b-it:free": {
+        "name": "Gemma 4 26B",
+        "provider": "Google",
+        "desc": "✨ Google's latest - Creative & smart",
+        "category": "balanced"
+    },
+    "google/gemma-4-31b-it:free": {
+        "name": "Gemma 4 31B",
+        "provider": "Google",
+        "desc": "🚀 Slightly bigger Gemma",
+        "category": "balanced"
+    },
+    
+    # Qwen Models (Alibaba)
+    "qwen/qwen3-next-80b-a3b-instruct:free": {
+        "name": "Qwen3 Next 80B",
+        "provider": "Qwen/Alibaba",
+        "desc": "⚡ Alibaba's next-gen model",
+        "category": "fast"
+    },
+    "qwen/qwen3-coder-480b-a35b:free": {
+        "name": "Qwen3 Coder 480B",
+        "provider": "Qwen/Alibaba",
+        "desc": "💻 BEST FOR CODE - Massive coding model",
+        "category": "code"
+    },
+    
+    # Poolside Models
+    "poolside/laguna-m.1:free": {
+        "name": "Laguna M.1",
+        "provider": "Poolside",
+        "desc": "🏊 New contender - Try it out!",
+        "category": "experimental"
+    },
+    "poolside/laguna-xs-2.1:free": {
+        "name": "Laguna XS 2.1",
+        "provider": "Poolside",
+        "desc": "💨 Tiny & fast experimental model",
+        "category": "ultra_fast"
+    },
+    
+    # Tencent Model
+    "tencent/hy3:free": {
+        "name": "HY3",
+        "provider": "Tencent",
+        "desc": "🇨🇳 Chinese tech giant's model",
+        "category": "experimental"
+    },
+    
+    # Liquid AI
+    "liquid/lfm-2.5-1.2b-instruct:free": {
+        "name": "LFM 2.5 1.2B",
+        "provider": "Liquid AI",
+        "desc": "⚡ Ultra tiny - Instant responses!",
+        "category": "ultra_fast"
+    },
+    
+    # Special Models
+    "venice/uncensored:free": {
+        "name": "Venice Uncensored",
+        "provider": "Venice",
+        "desc": "🔓 No filters - Raw responses",
+        "category": "special"
+    },
+}
+
+# Fallback models list (for auto-failover)
 FALLBACK_MODELS: List[str] = [
-    "meta-llama/llama-3.2-1b-instruct:free",      # Small but fast
-    "meta-llama/llama-3.2-3b-instruct:free",      # Good balance
-    "google/gemma-3-1b-it:free",                   # Google's latest
-    "qwen/qwen2.5-1.5b-instruct:free",             # Qwen small
-    "huggingfaceh4/zephyr-7b-beta:free",            # If available
+    "nvidia/nemotron-3-super-120b-a12b:free",      # Best fallback
+    "openai/gpt-oss-20b:free",                       # OpenAI backup
+    "llama/llama-3.2-3b-instruct:free",              # Small & fast
+    "google/gemma-4-26b-a4b-it:free",                 # Google backup
+    "qwen/qwen3-next-80b-a3b-instruct:free",          # Qwen backup
 ]
+
+# User-selected model storage (user_id -> model_id)
+USER_MODEL_PREFERENCES: dict = {}
 
 # ============================================================
 # AI BEHAVIOR CONFIGURATION
