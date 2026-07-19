@@ -956,7 +956,7 @@ async def models_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 short_name = model_info['name'].split()[0]  # First word only
                 
                 # Mark current model with ✅
-                is_current = "✅" if model_id == current_model else ""
+                is_current = "✅" if model_id == current_model_id else ""
                 
                 row.append(InlineKeyboardButton(
                     f"{is_current}{short_name}", 
@@ -1935,12 +1935,28 @@ def main():
     print(f"  {Colors.DIM}{len(FREE_TEXT_MODELS)} Free Models | Bug Fixes | New Features{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
-    # Run the bot
-    app.run_polling(
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,
-        close_loop=False,
-    )
+    # Run the bot with conflict handling
+    try:
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            close_loop=False,
+            poll_interval=1.0,
+            timeout=30,
+        )
+    except Conflict as e:
+        logger.error(f"Bot conflict detected: {e}")
+        logger.info("If using Railway, ensure only 1 instance is running")
+        # Try to recover by waiting and retrying
+        import time as _time
+        _time.sleep(5)
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            close_loop=False,
+            poll_interval=1.0,
+            timeout=30,
+        )
 
 
 def start_health_check_server(port: int):
