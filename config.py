@@ -71,6 +71,11 @@ USER_MODEL_PREFERENCES: dict = {}
 # User's agent mode status (user_id -> bool)
 USER_AGENT_MODE: dict = {}
 
+# Code Agent models (used when /agent mode is active)
+CODE_AGENT_MODELS: list = [
+    "openrouter/auto-beta",  # Same multimodal model, works for code too!
+]
+
 # ============================================================
 # 🎨 IMAGE GENERATION CONFIG
 # ============================================================
