@@ -35,12 +35,15 @@ from telegram import (
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
 )
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    InlineQueryHandler,
     ContextTypes,
     filters,
     ApplicationBuilder,
@@ -142,12 +145,13 @@ class TerminalEffects:
         """Print awesome startup banner."""
         banner = f"""
 {Colors.BRIGHT_CYAN}╔══════════════════════════════════════════════════════╗{Colors.RESET}
-{Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.BOLD}{Colors.BRIGHT_YELLOW}🤖 NOVA AI BOT - ADVANCED EDITION{Colors.RESET}              {Colors.BRIGHT_CYAN}║{Colors.RESET}
+{Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.BOLD}{Colors.BRIGHT_YELLOW}🤖 NOVA AI BOT - ULTRA ADVANCED{Colors.RESET}              {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}╠══════════════════════════════════════════════════════╣{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}                                                    {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ Live Typing Indicators{Colors.RESET}                         {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ Streaming Responses{Colors.RESET}                             {Colors.BRIGHT_CYAN}║{Colors.RESET}
-{Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ OpenRouter Nemotron Model{Colors.RESET}                      {Colors.BRIGHT_CYAN}║{Colors.RESET}
+{Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ INLINE MODE (@bot query){Colors.RESET}                      {Colors.BRIGHT_CYAN}║{Colors.RESET}
+{Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ Code/Translate/Summarize{Colors.RESET}                       {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ Conversation Memory{Colors.RESET}                            {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}  {Colors.GREEN}✓ Railway Deployment Ready{Colors.RESET}                        {Colors.BRIGHT_CYAN}║{Colors.RESET}
 {Colors.BRIGHT_CYAN}║{Colors.RESET}                                                    {Colors.BRIGHT_CYAN}║{Colors.RESET}
@@ -251,15 +255,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 I'm an **AI Assistant** powered by **Nemotron Ultra** - one of the most advanced AI models!
 
+**✨ INLINE MODE (NEW!)**
+Use me ANYWHERE: `@Rahulxaibot [your question]`
+
 **What can I do?**
 💬 Chat about anything
-💻 Help with coding
-📝 Write & analyze text
+💻 Help with coding (`@Rahulxaibot code: python hello world`)
+🌐 Translate text (`@Rahulxaibot translate: hello to hindi`)
+📝 Summarize content
 🔍 Answer questions
 🎨 Creative tasks & more!
 
 **Quick Start:**
-Just type a message and I'll respond!
+• Direct message me anything
+• Or use `@Rahulxaibot` in any chat!
 
 **Commands:**
 `/help` - See all commands
@@ -292,6 +301,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = """
 📖 **Nova AI Bot - Help Guide**
 
+**✨ INLINE MODE (USE ANYWHERE!)**
+`@Rahulxaibot [query]` - Use in any chat!
+
+**Inline Modes:**
+• `@Rahulxaibot hello` - Normal chat
+• `@Rahulxaibot code: python sort list` - Code generation
+• `@Rahulxaibot translate: hi to spanish` - Translation
+• `@Rahulxaibot summarize: [long text]` - Summarize
+
 **Basic Commands:**
 • `/start` - Start the bot
 • `/help` - Show this help
@@ -300,18 +318,22 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 **Info Commands:**
 • `/model` - Current AI model info
 • `/stats` - Your usage statistics
-• `/info` - Bot information
 
 **Admin Commands** *(Owner only)*:
 • `/broadcast <msg>` - Send to all users
 • `/users` - User count
-• `/stats global` - Global stats
+
+**Features:**
+🧠 Remembers conversation context
+⌨️ Live typing indicators
+📡 Streaming responses
+🎨 Beautiful formatted output
 
 **Tips:**
-💡 I remember our conversation context
-💡 Use clear questions for better answers
-💡 You can send voice notes too!
-💡 Type normally, no special format needed
+💡 Use inline mode in group chats!
+💡 Use `code:` prefix for programming
+💡 Use `translate:` for translations
+💡 I support Hindi/Hinglish too!
 
 **Having issues?**
 Contact: @owner_username
@@ -626,6 +648,181 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ============================================================
+# 🔍 INLINE QUERY HANDLER - @bot query support!
+# ============================================================
+
+async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle inline queries - @Rahulxaibot [query]
+    
+    Usage: Type @Rahulxaibot [your question] in any chat
+    Features:
+    - AI-powered responses
+    - Multiple modes (chat, code, translate, summarize)
+    - Quick results dropdown
+    """
+    query = update.inline_query
+    user = query.from_user
+    query_text = query.query.strip()
+    
+    # Log inline query
+    logger.chat(user.first_name or "Unknown", f"@inline: {query_text}", incoming=True)
+    
+    if not query_text:
+        # Show help when no query
+        results = [
+            InlineQueryResultArticle(
+                id="help_1",
+                title="🤖 Nova AI Bot - Start Chatting!",
+                description="Type your question to get AI response",
+                input_message_content=InputTextMessageContent(
+                    message_text="🤖 **Nova AI Bot**\n\nType `@Rahulxaibot [your question]` to chat with me!\n\n**Examples:**\n• `@Rahulxaibot hello`\n• `@Rahulxaibot write python code`\n• `@Rahulxaibot who is modi`\n• `@Rahulxaibot translate hello to hindi`",
+                    parse_mode='Markdown'
+                ),
+            ),
+            InlineQueryResultArticle(
+                id="help_2",
+                title="💻 Code Mode",
+                description="@Rahulxaibot code: [language] [what to make]",
+                input_message_content=InputTextMessageContent(
+                    message_text="💻 **Code Mode**\n\nUsage: `code: [language] [description]`\n\nExamples:\n• `code: python fibonacci series`\n• `code: javascript fetch api`\n• `code: java bubble sort`",
+                    parse_mode='Markdown'
+                ),
+            ),
+            InlineQueryResultArticle(
+                id="help_3", 
+                title="🌐 Translate Mode",
+                description="@Rahulxaibot translate: [text] to [language]",
+                input_message_content=InputTextMessageContent(
+                    message_text="🌐 **Translate Mode**\n\nUsage: `translate: [text] to [language]`\n\nExamples:\n• `translate: hello to hindi`\n• `translate: how are you to spanish`\n• `translate: thank you to french`",
+                    parse_mode='Markdown'
+                ),
+            ),
+        ]
+        
+        await query.answer(results, cache_time=300)
+        return
+    
+    # Process the query and generate AI response
+    try:
+        engine = get_ai_engine()
+        
+        # Detect mode from query prefix
+        mode = "chat"  # Default mode
+        actual_query = query_text
+        
+        if query_text.lower().startswith("code:"):
+            mode = "code"
+            actual_query = query_text[5:].strip()
+            system_prompt = f"You are an expert programmer. Write clean, well-commented code. Always use proper syntax highlighting. Respond with ONLY the code and brief explanation."
+            
+        elif query_text.lower().startswith("translate:"):
+            mode = "translate"
+            actual_query = query_text[10:].strip()
+            system_prompt = f"You are a professional translator. Translate accurately while preserving meaning and tone. Only provide the translation, nothing else."
+            
+        elif query_text.lower().startswith("summarize:"):
+            mode = "summarize"
+            actual_query = query_text[10:].strip()
+            system_prompt = f"Create a concise summary of the following text. Use bullet points for key information. Keep it under 500 characters."
+            
+        else:
+            mode = "chat"
+            system_prompt = None  # Use default
+        
+        # Get quick AI response for inline (shorter for speed)
+        response = await engine.chat(
+            user_id=user.id,
+            message=f"[INLINE {mode.upper()}] {actual_query}",
+            stream_callback=None,  # No streaming for inline (faster)
+            system_prompt=system_prompt,
+        )
+        
+        if response.error or not response.content:
+            # Error fallback
+            error_msg = f"😵 Error: {response.error[:100] if response.error else 'Unknown'}"
+            results = [
+                InlineQueryResultArticle(
+                    id="error",
+                    title="⚠️ Error occurred",
+                    description=error_msg,
+                    input_message_content=InputTextMessageContent(
+                        message_text=error_msg
+                    ),
+                )
+            ]
+        else:
+            ai_response = response.content
+            
+            # Truncate long responses for inline
+            display_response = ai_response[:300] + "..." if len(ai_response) > 300 else ai_response
+            
+            # Create multiple result options
+            results = []
+            
+            # Main result - Full response
+            results.append(
+                InlineQueryResultArticle(
+                    id="main_result",
+                    title=f"🤖 Nova's Response ({mode.title()})",
+                    description=display_response.replace('\n', ' ')[:100],
+                    input_message_content=InputTextMessageContent(
+                        message_text=ai_response,
+                        parse_mode='Markdown'
+                    ),
+                )
+            )
+            
+            # Copy result - Just the text (no markdown)
+            results.append(
+                InlineQueryResultArticle(
+                    id="copy_result",
+                    title="📋 Copy as Plain Text",
+                    description="Click to copy response without formatting",
+                    input_message_content=InputTextMessageContent(
+                        message_text=ai_response.replace('*', '').replace('`', '').replace('_', '')
+                    ),
+                )
+            )
+            
+            # Continue in DM option
+            results.append(
+                InlineQueryResultArticle(
+                    id="continue_dm",
+                    title="💬 Continue in DM",
+                    description="Open private chat with Nova for longer conversation",
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"🔄 **Continue this conversation in DM!**\n\nYour last query: *{actual_query}*\n\nResponse preview:\n{display_response}\n\n👉 Message me directly to continue!"
+                    ),
+                )
+            )
+        
+        # Answer inline query (cache for 5 minutes)
+        await query.answer(results, cache_time=300, is_personal=True)
+        
+        logger.success(f"Inline response sent ({mode} mode)")
+        
+    except Exception as e:
+        logger.error(f"Inline query error: {e}")
+        
+        # Send error result
+        try:
+            results = [
+                InlineQueryResultArticle(
+                    id="error_fallback",
+                    title="⚠️ Temporary Error",
+                    description=str(e)[:100],
+                    input_message_content=InputTextMessageContent(
+                        message_text="😵 **Oops!** Something went wrong.\n\nPlease try again or message me directly!"
+                    ),
+                )
+            ]
+            await query.answer(results, cache_time=60)
+        except:
+            pass
+
+
+# ============================================================
 # 👑 ADMIN COMMANDS
 # ============================================================
 
@@ -748,6 +945,9 @@ def main():
     
     # Callback handler (inline buttons)
     app.add_handler(CallbackQueryHandler(button_callback))
+    
+    # INLINE QUERY HANDLER - @bot [query] support!
+    app.add_handler(InlineQueryHandler(inline_query_handler))
     
     # Error handler - Compatible with ALL python-telegram-bot versions!
     try:
