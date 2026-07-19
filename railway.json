@@ -1,0 +1,1 @@
+{"schema": "v2", "name": "Nova AI Bot", "services": [{"name": "bot", "source": {"path": "."}, "healthcheck": {"timeout_seconds": 10, "interval_seconds": 30, "retries": 3, "method": "GET", "path": "/health"}, "scaling": {"min_instances": 1, "max_instances": 1, "target_cpu_percent": 80}, "env": {"BOT_TOKEN": "${BOT_TOKEN}", "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"}}]}

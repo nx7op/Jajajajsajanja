@@ -726,11 +726,16 @@ def main():
     print(f"  {Colors.DIM}Waiting for messages...{Colors.RESET}")
     print(f"{Colors.BRIGHT_GREEN}{'═' * 60}{Colors.RESET}\n")
     
-    # Run the bot
+    # Run the bot - OPTIMIZED FOR RAILWAY!
     app.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True,
-        close_loop=False
+        close_loop=False,
+        # Prevent multiple instances from conflicting
+        timeout=60,  # Long polling timeout
+        read_timeout=60,
+        write_timeout=60,
+        pool_timeout=60,
     )
 
 
