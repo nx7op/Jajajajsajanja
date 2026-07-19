@@ -715,7 +715,7 @@ def main():
     
     logger.info("Initializing Nova AI Bot...")
     
-    # Build application - Using new v20+ API to avoid deprecation warnings
+    # Build application - Using v20+ API with CORRECT method names!
     app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
@@ -723,10 +723,10 @@ def main():
         .write_timeout(45)
         .connect_timeout(45)
         .pool_timeout(45)
-        .get_updates_read_timeout(60)  # New v20+ method
-        .get_updates_write_timeout(60)  # New v20+ method
-        .get_updates_pool_timeout(60)  # New v20+ method
-        .get_updates_connection_timeout(60)  # New v20+ method
+        .get_updates_read_timeout(60)  # ✅ Correct method name
+        .get_updates_write_timeout(60)  # ✅ Correct
+        .get_updates_pool_timeout(60)  # ✅ Correct
+        .get_updates_connect_timeout(60)  # ✅ FIXED: was "connection_timeout"
         .build()
     )
     
