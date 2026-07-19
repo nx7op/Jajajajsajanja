@@ -29,7 +29,6 @@ import threading
 import random
 import json
 import base64
-import requests  # 🆕 For image generation!
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -1162,30 +1161,34 @@ async def generate_image(prompt: str) -> dict:
     Generate image using OpenRouter's auto-beta model with multimodal support.
     
     Uses modalities: ["image", "text"] for image generation!
+    Uses aiohttp (async) - already installed!
     """
+    import aiohttp
+    
     try:
-        response = requests.post(
-            url=f"{OPENROUTER_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://t.me/Rahulxaibot",
-                "X-Title": "Nova AI Bot",
-            },
-            json={
-                "model": IMAGE_MODEL,  # "openrouter/auto-beta"
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"Generate an image: {prompt}"
-                    }
-                ],
-                "modalities": ["image", "text"],  # 🎨 KEY: Request image generation!
-            },
-            timeout=60  # 60 second timeout for image generation
-        )
-        
-        result = response.json()
+        # Use aiohttp for async HTTP request
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                url=f"{OPENROUTER_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://t.me/Rahulxaibot",
+                    "X-Title": "Nova AI Bot",
+                },
+                json={
+                    "model": IMAGE_MODEL,  # "openrouter/auto-beta"
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": f"Generate an image: {prompt}"
+                        }
+                    ],
+                    "modalities": ["image", "text"],  # 🎨 KEY: Request image generation!
+                }
+            ) as response:
+                result = await response.json()
         
         # Check for errors
         if "error" in result:
@@ -1226,10 +1229,8 @@ async def generate_image(prompt: str) -> dict:
         # No usable response
         return {"success": False, "error": "No image in response"}
         
-    except requests.exceptions.Timeout:
+    except asyncio.TimeoutError:
         return {"success": False, "error": "Request timeout - image generation took too long"}
-    except requests.exceptions.RequestException as e:
-        return {"success": False, "error": f"API request failed: {str(e)[:100]}"}
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {str(e)[:100]}"}
 
